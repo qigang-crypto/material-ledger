@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>耗材台账系统</title>
+<style>
+*{box-sizing:border-box;font-family:system-ui,sans-serif}
+body{max-width:900px;margin:10px auto;padding:10px}
+.card{border:1px solid #ddd;border-radius:12px;padding:16px;margin-bottom:14px}
+.btn{padding:10px 14px;border:none;border-radius:8px;background:#028469;color:white;cursor:pointer;margin:4px}
+.btn-gray{background:#888}
+input,select,textarea{width:100%;padding:9px;margin:6px 0;border:1px solid #ccc;border-radius:8px}
+.quick-wrap{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
+.quick-btn{padding:8px 10px;border:1px solid #028469;color:#028469;background:#f0fbf7;border-radius:8px;cursor:pointer}
+.tab{display:flex;gap:4px;margin-bottom:12px}
+.tab>div{padding:10px 14px;border-radius:8px;background:#eee;cursor:pointer}
+.tab>div.active{background:#028469;color:white}
+.hidden{display:none}
+</style>
+</head>
+<body>
+<div class="tab">
+<div class="active" data-page="add">录入耗材</div>
+<div data-page="list">台账列表</div>
+<div data-page="setting">设置</div>
+</div>
+
+<div id="page-add" class="page">
+<div class="card">
+<h4>快捷耗材（点击自动填充）</h4>
+<div class="quick-wrap">
+<div class="quick-btn" data-json='{"name":"PLA","category":"FDM线材","unit":"卷","spec":"1.75mm"}'>PLA</div>
+<div class="quick-btn" data-json='{"name":"PETG","category":"FDM线材","unit":"卷","spec":"1.75mm"}'>PETG</div>
+<div class="quick-btn" data-json='{"name":"TPU","category":"FDM线材","unit":"卷","spec":"1.75mm"}'>TPU</div>
+<div class="quick-btn" data-json='{"name":"UV墨水","category":"UV耗材","unit":"瓶"}'>UV墨水</div>
+<div class="quick-btn" data-json='{"name":"光敏树脂","category":"光固化耗材","unit":"瓶"}'>光敏树脂</div>
+<div class="quick-btn" data-json='{"name":"离型膜","category":"光固化耗材","unit":"张"}'>离型膜</div>
+<div class="quick-btn" data-json='{"name":"擦拭布","category":"清洁耗材","unit":"包"}'>擦拭布</div>
+<div class="quick-btn" data-json='{"name":"无水酒精","category":"清洁耗材","unit":"瓶"}'>无水酒精</div>
+</div>
+<input placeholder="耗材名称" id="inp-name">
+<input placeholder="分类" id="inp-cate">
+<input placeholder="规格" id="inp-spec">
+<input placeholder="单位" id="inp-unit">
+<input placeholder="数量" id="inp-num" type="number">
+<textarea placeholder="备注" id="inp-remark"></textarea>
+<input type="file" id="img-upload" accept="image/*" capture="environment">
+<div id="img-preview"></div>
+<button class="btn" id="save-btn">保存记录</button>
+</div>
+</div>
+
+<div id="page-list" class="page hidden">
+<div class="card">
+<h3>耗材台账</h3>
+<button class="btn" id="export-excel">导出WPS表格</button>
+<div id="list-box"></div>
+</div>
+</div>
+
+<div id="page-setting" class="page hidden">
+<div class="card">
+<h3>同步功能</h3>
+<button class="btn" id="export-sync">导出同步包json</button>
+<input type="file" id="import-sync" accept=".json">
+<div style="margin-top:12px;color:#666">当前方案：手动录入模式（无AI识别，稳定不跨域）</div>
+</div>
+</div>
+
+<script>
+let dataList=JSON.parse(localStorage.getItem("耗材台账")||"[]");
+const $=function(s){return document.querySelector(s);}
+const $$=function(s){return document.querySelectorAll(s);}
+$$(".tab>div").forEach(function(el){
+el.onclick=function(){
+$$(".tab>div").forEach(function(e){e.classList.remove("active");});
+el.classList.add("active");
+$$(".page").forEach(function(p){p.classList.add("hidden");});
+$("#page-"+el.dataset.page).classList.remove("hidden");
+if(el.dataset.page==="list")renderList();
+}
+})
+$$(".quick-btn").forEach(function(btn){
+btn.onclick=function(){
+const obj=JSON.parse(btn.dataset.json);
+$("#inp-name").value=obj.name;
+$("#inp-cate").value=obj.category;
+$("#inp-spec").value=obj.spec||"";
+$("#inp-unit").value=obj.unit;
+}
+})
+$("#save-btn").onclick=function(){
+const item={
+id:Date.now(),
+name:$("#inp-name").value,
+cate:$("#inp-cate").value,
+spec:$("#inp-spec").value,
+unit:$("#inp-unit").value,
+num:Number($("#inp-num").value),
+remark:$("#inp-remark").value,
+time:new Date().toLocaleString()
+};
+dataList.push(item);
+localStorage.setItem("耗材台账",JSON.stringify(dataList));
+alert("保存成功！");
+$("#inp-name").value="";$("#inp-cate").value="";$("#inp-spec").value="";
+$("#inp-unit").value="";$("#inp-num").value="";$("#inp-remark").value="";
+$("#img-preview").innerHTML="";
+}
+function renderList(){
+$("#list-box").innerHTML=dataList.map(function(i){
+return '<div style="border-bottom:1px solid #eee;padding:8px;">【'+i.time+'】 '+i.name+' | '+i.cate+' | '+i.spec+' | '+i.num+i.unit+' | '+(i.remark||"-")+'</div>';
+}).join("");
+}
+$("#export-excel").onclick=function(){
+let txt="名称\t分类\t规格\t数量\t单位\t备注\t录入时间\n";
+dataList.forEach(function(i){
+txt += i.name+"\t"+i.cate+"\t"+i.spec+"\t"+i.num+"\t"+i.unit+"\t"+i.remark+"\t"+i.time+"\n";
+});
+navigator.clipboard.writeText(txt).then(function(){alert("表格文本已经复制！打开WPS表格直接粘贴");});
+}
+$("#export-sync").onclick=function(){
+const blob=new Blob([JSON.stringify(dataList,null,2)],{type:"application/json"});
+const a=document.createElement("a");
+a.href=URL.createObjectURL(blob);
+a.download="耗材同步包.json";a.click();
+}
+$("#import-sync").onchange=async function(e){
+const f=e.target.files[0];
+const text=await f.text();
+const newArr=JSON.parse(text);
+const map=new Map(dataList.map(function(x){return [x.id,x];}));
+newArr.forEach(function(x){map.set(x.id,x);});
+dataList=Array.from(map.values());
+localStorage.setItem("耗材台账",JSON.stringify(dataList));
+alert("导入完成，已合并数据");
+renderList();
+}
+</script>
+</body>
+</html>
